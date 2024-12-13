@@ -1,28 +1,45 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import html2canvas from 'html2canvas'
 import './App.css'
 
 const INITIAL_CONTENT = ['S', 'A', 'B', 'C', 'D', 'E']
 
 function App() {
 	const [content] = useState(INITIAL_CONTENT)
-	const [draggedElement, setDraggedElement] = useState({
+	const draggedElementRef = useRef({
 		element: null,
 		srcContainer: null
 	})
 
+	const handleResetBtn = () => {
+		// recuperar todas las imágenes
+		const imgs = document.querySelectorAll('.tier .item-img')
+		const itemsSection = document.getElementById('selector-items')
+
+		imgs.forEach((img) => {
+			img.remove()
+			itemsSection.appendChild(img)
+		})
+	}
+
 	const handleDragStart = (event) => {
-		setDraggedElement({
+		draggedElementRef.current = {
 			element: event.target,
 			srcContainer: event.target.parentElement
-		})
-		event.dataTransfer.setData('text/plain', draggedElement.src)
+		}
+
+		// Al usar REF elimino la necesidad de setear manual mente el dataTransfer
+		// event.dataTransfer.setData(
+		// 	'text/plain',
+		// 	draggedElementRef.current.srcContainer
+		// )
 	}
 
 	const handleDragEnd = () => {
-		setDraggedElement({
+		draggedElementRef.current = {
 			element: null,
 			srcContainer: null
-		})
+		}
 	}
 
 	const createNewImg = (src) => {
@@ -30,9 +47,6 @@ function App() {
 		imgElement.src = src
 		imgElement.className = 'item-img'
 		imgElement.draggable = true
-
-		// imgElement.addEventListener('dragstart', handleDragStart)
-		// imgElement.addEventListener('dragend', handleDragEnd)
 
 		imgElement.ondragstart = (e) => handleDragStart(e)
 		imgElement.ondragend = (e) => handleDragEnd(e)
@@ -43,65 +57,134 @@ function App() {
 		return imgElement
 	}
 
-	const handleImgInput = (e) => {
-		const file = e.target.files[0]
+	const handleFilesInput = (files) => {
+		if (!files || files.length === 0) return
 
-		if (file) {
+		// transformamos el FileList en un Array
+		const fileList = Array.from(files)
+		fileList.forEach((file) => {
 			const fileReader = new FileReader()
-			fileReader.readAsDataURL(file) // como es una img => lee URL
+			fileReader.readAsDataURL(file) // lee img como URL
 
 			fileReader.onload = (evtRead) => {
 				createNewImg(evtRead.target.result)
 			}
-		}
+		})
 	}
 
-	useEffect(() => {
-		console.log(draggedElement)
-	}, [draggedElement])
+	const handleImgInput = (e) => {
+		const { files } = e.target
+		handleFilesInput(files)
+	}
 
 	useEffect(() => {
 		const rows = document.querySelectorAll('.tier .row')
 		rows.forEach((row) => {
 			row.ondragover = handleDragOver // => previsualizar
 			row.ondrop = handleDropItem // => finaliza
-			row.ondragleave = handleDraLeave // => nos vamos
-
-			// row.addEventListener('dragover', handleDragOver) // => previsualizar
-			// row.addEventListener('drop', handleDropItem) // => finaliza
-			// row.addEventListener('dragleave', handleDraLeave) // => nos vamos
+			row.ondragleave = handleDragLeave // => nos vamos
 		})
-		// return () => {
-		// 	rows.forEach((row) => {
-		// 		row.removeEventListener('dragover', handleDragOver)
-		// 		row.removeEventListener('drop', handleDropItem)
-		// 		row.removeEventListener('dragleave', handleDraLeave)
-		// 	})
+
+		const itemsSection = document.getElementById('selector-items')
+		itemsSection.addEventListener('dragover', handleDragOver)
+		itemsSection.addEventListener('dragover', handleDragOverFromDesktop)
+
+		itemsSection.addEventListener('drop', handleDropItem)
+		itemsSection.addEventListener('drop', handleDropFromDesktop)
+
+		itemsSection.addEventListener('dragleave', handleDragLeave)
+		itemsSection.addEventListener('dragleave', handleDragLeaveFromDesktop)
+
+		return () => {
+			itemsSection.removeEventListener('dragover', handleDragOver)
+			itemsSection.removeEventListener('dragover', handleDragOverFromDesktop)
+			itemsSection.removeEventListener('drop', handleDropItem)
+			itemsSection.removeEventListener('drop', handleDropFromDesktop)
+		}
 	}, [])
 
-	// el prevent default es necesario para los 3 eventos [Drop, Over, Leave]
+	const handleDropFromDesktop = (evt) => {
+		evt.preventDefault()
+		const { currentTarget, dataTransfer } = evt
+		if (dataTransfer.getData('text/plain') === 'internal') return
+		if (dataTransfer.types.includes('Files')) {
+			handleFilesInput(dataTransfer.files)
+			currentTarget.classList.remove('drag-files')
+		}
+	}
+
+	const handleDragOverFromDesktop = (evt) => {
+		evt.preventDefault()
+		const { currentTarget, dataTransfer } = evt
+		if (dataTransfer.types.includes('Files')) {
+			currentTarget.classList.add('drag-files')
+		}
+	}
+
+	const handleDragLeaveFromDesktop = (evt) => {
+		evt.preventDefault()
+		const { currentTarget } = evt
+		currentTarget.classList.remove('drag-files')
+	}
+
 	// ---------------------- DRAG AND DROP ----------------------
+	// el prevent default es necesario para los 3 eventos [Drop, Over, Leave]
 	const handleDropItem = (evt) => {
 		evt.preventDefault()
 		const { currentTarget, dataTransfer } = evt
 
-		if (draggedElement.element && draggedElement.srcContainer) {
-			draggedElement.element.srcContainer.removeChild(draggedElement.element)
+		const currentElement = draggedElementRef.current
+		if (currentElement.element) {
+			currentElement.srcContainer.removeChild(currentElement.element)
 
 			const src = dataTransfer.getData('text/plain')
 			const newImgElement = createNewImg(src)
 			currentTarget.appendChild(newImgElement)
 		}
+		currentTarget.classList.remove('drag-over')
+		currentTarget.querySelector('.drag-preview')?.remove()
 	}
 
 	const handleDragOver = (evt) => {
 		evt.preventDefault()
-		console.log('drag over')
+		const { currentTarget } = evt
+
+		// validaciones
+		if (draggedElementRef.current.srcContainer === currentTarget) return
+
+		currentTarget.classList.add('drag-over')
+
+		const previewElement = currentTarget.querySelector('.drag-preview')
+		if (draggedElementRef.current && !previewElement) {
+			const preview = draggedElementRef.current.element?.cloneNode(true)
+			if (preview) {
+				preview.classList.add('drag-preview')
+				currentTarget.appendChild(preview)
+			}
+		}
 	}
 
-	const handleDraLeave = (evt) => {
+	const handleDragLeave = (evt) => {
 		evt.preventDefault()
-		console.log('drag leave')
+		const { currentTarget } = evt
+		currentTarget.classList.remove('drag-over')
+		currentTarget.querySelector('.drag-preview')?.remove()
+	}
+
+	// ---- save btn
+	const handleSaveBtn = () => {
+		console.log('save')
+		const tierElment = document.querySelector('.tier')
+		html2canvas(tierElment).then((canvas) => {
+			const URL = canvas.toDataURL('image/png')
+			const link = document.createElement('a')
+			link.href = URL
+			link.download = 'tiermaker-img.png'
+
+			document.body.appendChild(link)
+			link.click()
+			link.remove()
+		})
 	}
 
 	return (
@@ -195,6 +278,7 @@ function App() {
 							<path d='M4 6v-1a1 1 0 0 1 1 -1h1m5 0h2m5 0h1a1 1 0 0 1 1 1v1m0 5v2m0 5v1a1 1 0 0 1 -1 1h-1m-5 0h-2m-5 0h-1a1 1 0 0 1 -1 -1v-1m0 -5v-2m0 -5' />
 						</svg>
 						<input
+							multiple
 							type='file'
 							id='img-input'
 							name='file-selector'
@@ -203,7 +287,7 @@ function App() {
 							onChange={handleImgInput}
 						/>
 					</label>
-					<button>
+					<button onClick={handleResetBtn}>
 						<svg
 							xmlns='http://www.w3.org/2000/svg'
 							width='24'
@@ -219,6 +303,24 @@ function App() {
 							<path d='M3.06 13a9 9 0 1 0 .49 -4.087' />
 							<path d='M3 4.001v5h5' />
 							<path d='M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0' />
+						</svg>
+					</button>
+					<button onClick={handleSaveBtn}>
+						<svg
+							xmlns='http://www.w3.org/2000/svg'
+							width='24'
+							height='24'
+							viewBox='0 0 24 24'
+							fill='none'
+							stroke='currentColor'
+							strokeWidth='2'
+							strokeLinecap='round'
+							strokeLinejoin='round'
+							className='icon icon-tabler icons-tabler-outline icon-tabler-download'>
+							<path stroke='none' d='M0 0h24v24H0z' fill='none' />
+							<path d='M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2' />
+							<path d='M7 11l5 5l5 -5' />
+							<path d='M12 4l0 12' />
 						</svg>
 					</button>
 				</section>

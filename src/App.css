@@ -25,8 +25,20 @@
 .row {
 	display: flex;
 	flex-direction: row;
+	flex-wrap: wrap;
 	border-bottom: 1px solid #333;
 	min-height: 70px;
+	transition: all 0.2s ease-in-out;
+
+	img {
+		align-self: center;
+		margin-left: 15px;
+	}
+
+	&.drag-over {
+		background-color: rgba(255, 255, 255, 0.408);
+		scale: 1.01;
+	}
 }
 
 .label {
@@ -75,14 +87,26 @@
 	flex-direction: row;
 	align-items: center;
 	border: 1px solid white;
+	flex-wrap: wrap;
 	min-height: 80px;
 	width: 90%;
 	padding: 10px;
 	gap: 20px;
+
+	&.drag-files {
+		background-color: rgba(234, 107, 107, 0.28);
+		border: 1px dashed #f7f5c7;
+	}
 }
 
 .item-img {
 	height: 45px;
 	object-fit: contain;
 	cursor: grab;
+
+	&.drag-preview {
+		opacity: 0.4;
+		scale: 0.9;
+		pointer-events: none;
+	}
 }

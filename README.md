@@ -1,8 +1,15 @@
-# React + Vite
+## Project: TierList con JS
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Ejercicio modificado para usar React
+Siguiendo el video tutorial de Midudev
 
-Currently, two official plugins are available:
+[Cómo crear Tier List con Vanilla JavaScript + Drag and Drop](https://youtu.be/LPzG0PnOzgA?si=03WV35-kFWPoyQkU)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+#### To-Do
+
+- [] que se guarde en locastorage (guardar y recuperar)
+- [] tierlist preparados (img preparadas para calificar )
+- [] validacion por tipo de archivos arrastrados
+- [] hacer un backend con alguna BD
+- [] multiplayer (varios editando)
+- [] agregar o quitar niveles
